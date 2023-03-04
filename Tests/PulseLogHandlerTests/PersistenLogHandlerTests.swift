@@ -45,9 +45,6 @@ final class PersistentLogHandlerTests: XCTestCase {
         let date = Date() - 200
         currentDate = date
 
-        LoggerStore.Session.startSession()
-        let sessionID = LoggerStore.Session.current.id
-
         LoggingSystem.bootstrap {
             MultiplexLogHandler([
                 PersistentLogHandler(label: $0, store: self.store),
@@ -67,15 +64,15 @@ final class PersistentLogHandlerTests: XCTestCase {
             return XCTFail("Unexpected number of messages stored")
         }
 
-        let persistedMessage1 = try XCTUnwrap(persistedMessages.first { $0.label.name == "test.logger.1" })
+        let persistedMessage1 = try XCTUnwrap(persistedMessages.first { $0.label == "test.logger.1" })
         XCTAssertEqual(persistedMessage1.text, message1)
         XCTAssertEqual(persistedMessage1.createdAt, date)
-        XCTAssertEqual(persistedMessage1.session, sessionID)
+        XCTAssertEqual(persistedMessage1.sessionID, store.sessionID)
 
-        let persistedMessage2 = try XCTUnwrap(persistedMessages.first { $0.label.name == "test.logger.2" })
+        let persistedMessage2 = try XCTUnwrap(persistedMessages.first { $0.label == "test.logger.2" })
         XCTAssertEqual(persistedMessage2.text, message2)
         XCTAssertEqual(persistedMessage2.createdAt, date)
-        XCTAssertEqual(persistedMessage2.session, sessionID)
+        XCTAssertEqual(persistedMessage2.sessionID, store.sessionID)
     }
 
     func testStoresFileInformation() throws {

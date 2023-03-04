@@ -31,15 +31,24 @@ public struct PersistentLogHandler {
     public var logLevel = Logger.Level.info
 
     private let store: LoggerStore
-
     private let label: String
+    private let metadataProvider: Logger.MetadataProvider?
 
     public init(label: String) {
         self.init(label: label, store: .shared)
     }
 
     public init(label: String, store: LoggerStore) {
+        self.init(label: label, metadataProvider: nil, store: store)
+    }
+    
+    public init(label: String, metadataProvider: Logger.MetadataProvider?) {
+        self.init(label: label, metadataProvider: nil, store: .shared)
+    }
+    
+    public init(label: String, metadataProvider: Logger.MetadataProvider?, store: LoggerStore) {
         self.label = label
+        self.metadataProvider = metadataProvider
         self.store = store
     }
 }
@@ -54,11 +63,36 @@ extension PersistentLogHandler: LogHandler {
     }
 
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
+        store.storeMessage(
+            label: label,
+            level: .init(level),
+            message: message.description,
+            metadata: .init(mergedMetadata(with: metadata)),
+            file: file,
+            function: function,
+            line: line
+        )
+    }
+    
+    /// Merges metadata from a log entry metadata with the following priority order:
+    ///
+    /// * The metadata explicitly set on this log handler.
+    /// * The metadata returned from the metadata provider.
+    /// * The individual log entry metadata.
+    ///
+    private func mergedMetadata(with metadata: Logger.Metadata?) -> Logger.Metadata {
         var mergedMetadata = self.metadata
-        for (key, value) in metadata ?? [:] {
-            mergedMetadata[key] = value // Override keys if necessary
+        if let metadataProvider {
+            for (key, value) in metadataProvider.get() {
+                mergedMetadata[key] = value // Override keys if necessary
+            }
         }
-        store.storeMessage(label: label, level: .init(level), message: message.description, metadata: .init(mergedMetadata), file: file, function: function, line: line)
+        if let metadata {
+            for (key, value) in metadata {
+                mergedMetadata[key] = value // Override keys if necessary
+            }
+        }
+        return mergedMetadata
     }
 }
 

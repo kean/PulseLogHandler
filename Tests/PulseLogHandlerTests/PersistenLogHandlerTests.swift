@@ -129,6 +129,51 @@ final class PersistentLogHandlerTests: XCTestCase {
         XCTAssertEqual(entry.key, "system")
         XCTAssertEqual(entry.value, "foo")
     }
+    
+    func testStoringMetadataFromLoggerMetadataProvider() throws {
+        let provider = Logger.MetadataProvider {
+            ["providerValue": .string("value")]
+        }
+        let sut = PersistentLogHandler(
+            label: "test-handler",
+            metadataProvider: provider,
+            store: store
+        )
+        
+        // WHEN
+        sut.log(level: .debug, message: "request failed", metadata: ["system": "auth"])
+
+        // THEN key-value metadata is merged with provider metadata
+        let message = try XCTUnwrap(store.allMessages().first)
+        XCTAssertEqual(message.metadata.count, 2)
+        XCTAssertEqual(message.metadata, [
+            "system": "auth",
+            "providerValue": "value"
+        ])
+    }
+    
+    func testMetadataMergePriority() throws {
+        let provider = Logger.MetadataProvider {
+            ["key": .string("provider-value")]
+        }
+        var sut = PersistentLogHandler(
+            label: "test-handler",
+            metadataProvider: provider,
+            store: store
+        )
+        sut.log(level: .debug, message: "request failed")
+        sut[metadataKey: "key"] = "store-value"
+        
+        // provider value overrides log handler metadata value
+        let message = try XCTUnwrap(store.allMessages().first)
+        XCTAssertEqual(message.metadata, ["key": "provider-value"])
+        
+        sut.log(level: .debug, message: "request failed", metadata: ["key": .string("entry-value")])
+        
+        // log entry value overrides store and provider value
+        let messageTwo = try XCTUnwrap(store.allMessages().last)
+        XCTAssertEqual(messageTwo.metadata, ["key": "entry-value"])
+    }
 }
 
 extension LogHandler {

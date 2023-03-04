@@ -45,9 +45,6 @@ final class PersistentLogHandlerTests: XCTestCase {
         let date = Date() - 200
         currentDate = date
 
-        LoggerStore.Session.startSession()
-        let sessionID = LoggerStore.Session.current.id
-
         LoggingSystem.bootstrap {
             MultiplexLogHandler([
                 PersistentLogHandler(label: $0, store: self.store),
@@ -67,15 +64,15 @@ final class PersistentLogHandlerTests: XCTestCase {
             return XCTFail("Unexpected number of messages stored")
         }
 
-        let persistedMessage1 = try XCTUnwrap(persistedMessages.first { $0.label.name == "test.logger.1" })
+        let persistedMessage1 = try XCTUnwrap(persistedMessages.first { $0.label == "test.logger.1" })
         XCTAssertEqual(persistedMessage1.text, message1)
         XCTAssertEqual(persistedMessage1.createdAt, date)
-        XCTAssertEqual(persistedMessage1.session, sessionID)
+        XCTAssertEqual(persistedMessage1.sessionID, store.sessionID)
 
-        let persistedMessage2 = try XCTUnwrap(persistedMessages.first { $0.label.name == "test.logger.2" })
+        let persistedMessage2 = try XCTUnwrap(persistedMessages.first { $0.label == "test.logger.2" })
         XCTAssertEqual(persistedMessage2.text, message2)
         XCTAssertEqual(persistedMessage2.createdAt, date)
-        XCTAssertEqual(persistedMessage2.session, sessionID)
+        XCTAssertEqual(persistedMessage2.sessionID, store.sessionID)
     }
 
     func testStoresFileInformation() throws {
@@ -131,6 +128,55 @@ final class PersistentLogHandlerTests: XCTestCase {
         let entry = try XCTUnwrap(message.metadata.first)
         XCTAssertEqual(entry.key, "system")
         XCTAssertEqual(entry.value, "foo")
+    }
+    
+    func testStoringMetadataFromLoggerMetadataProvider() throws {
+        let provider = Logger.MetadataProvider {
+            ["providerValue": .string("value")]
+        }
+        let sut = PersistentLogHandler(
+            label: "test-handler",
+            metadataProvider: provider,
+            store: store
+        )
+        
+        // WHEN
+        sut.log(level: .debug, message: "request failed", metadata: ["system": "auth"])
+
+        // THEN key-value metadata is merged with provider metadata
+        let message = try XCTUnwrap(store.allMessages().first)
+        XCTAssertEqual(message.metadata.count, 2)
+        XCTAssertEqual(message.metadata, [
+            "system": "auth",
+            "providerValue": "value"
+        ])
+    }
+    
+    func testMetadataMergePriority() throws {
+        let provider = Logger.MetadataProvider {
+            ["key": .string("provider-value")]
+        }
+        var sut = PersistentLogHandler(
+            label: "test-handler",
+            metadataProvider: provider,
+            store: store
+        )
+        sut.log(level: .debug, message: "request failed")
+        
+        // uses provider value when present
+        let message = try XCTUnwrap(store.allMessages().first)
+        XCTAssertEqual(message.metadata, ["key": "provider-value"])
+        
+        // handler metadata value overrides provider value
+        sut[metadataKey: "key"] = "store-value"
+        sut.log(level: .debug, message: "request failed")
+        let messageTwo = try XCTUnwrap(store.allMessages().last)
+        XCTAssertEqual(messageTwo.metadata, ["key": "store-value"])
+        
+        // log entry value overrides store and provider value
+        sut.log(level: .debug, message: "request failed", metadata: ["key": .string("entry-value")])
+        let messageThree = try XCTUnwrap(store.allMessages().last)
+        XCTAssertEqual(messageThree.metadata, ["key": "entry-value"])
     }
 }
 

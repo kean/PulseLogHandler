@@ -29,10 +29,10 @@ public typealias URLSessionProxyDelegate = Pulse.URLSessionProxyDelegate
 public struct PersistentLogHandler {
     public var metadata = Logger.Metadata()
     public var logLevel = Logger.Level.info
+    public var metadataProvider: Logger.MetadataProvider?
 
     private let store: LoggerStore
     private let label: String
-    private let metadataProvider: Logger.MetadataProvider?
 
     public init(label: String) {
         self.init(label: label, store: .shared)
@@ -74,25 +74,17 @@ extension PersistentLogHandler: LogHandler {
         )
     }
     
-    /// Merges metadata from a log entry metadata with the following priority order:
+    /// Merges metadata from a log entry metadata with the metadata set on this logger and any metadata
+    /// returned from the metadata provider, if present.
     ///
-    /// * The metadata explicitly set on this log handler.
-    /// * The metadata returned from the metadata provider.
-    /// * The individual log entry metadata.
+    /// When multiple sources of metadata return values for the same key, the more specific value will win,
+    /// i.e. the priority from least to most specific is: the metadata provider, the handler's metadata, then
+    /// finally the log entry's metadata.
     ///
     private func mergedMetadata(with metadata: Logger.Metadata?) -> Logger.Metadata {
-        var mergedMetadata = self.metadata
-        if let metadataProvider {
-            for (key, value) in metadataProvider.get() {
-                mergedMetadata[key] = value // Override keys if necessary
-            }
-        }
-        if let metadata {
-            for (key, value) in metadata {
-                mergedMetadata[key] = value // Override keys if necessary
-            }
-        }
-        return mergedMetadata
+        return (metadata ?? [:])
+            .merging(self.metadata, uniquingKeysWith: { (current, _) in current })
+            .merging(self.metadataProvider?.get() ?? [:], uniquingKeysWith: { (current, _) in current })
     }
 }
 

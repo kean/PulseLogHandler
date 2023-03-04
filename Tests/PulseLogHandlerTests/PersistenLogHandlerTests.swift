@@ -162,17 +162,21 @@ final class PersistentLogHandlerTests: XCTestCase {
             store: store
         )
         sut.log(level: .debug, message: "request failed")
-        sut[metadataKey: "key"] = "store-value"
         
-        // provider value overrides log handler metadata value
+        // uses provider value when present
         let message = try XCTUnwrap(store.allMessages().first)
         XCTAssertEqual(message.metadata, ["key": "provider-value"])
         
-        sut.log(level: .debug, message: "request failed", metadata: ["key": .string("entry-value")])
+        // handler metadata value overrides provider value
+        sut[metadataKey: "key"] = "store-value"
+        sut.log(level: .debug, message: "request failed")
+        let messageTwo = try XCTUnwrap(store.allMessages().last)
+        XCTAssertEqual(messageTwo.metadata, ["key": "store-value"])
         
         // log entry value overrides store and provider value
-        let messageTwo = try XCTUnwrap(store.allMessages().last)
-        XCTAssertEqual(messageTwo.metadata, ["key": "entry-value"])
+        sut.log(level: .debug, message: "request failed", metadata: ["key": .string("entry-value")])
+        let messageThree = try XCTUnwrap(store.allMessages().last)
+        XCTAssertEqual(messageThree.metadata, ["key": "entry-value"])
     }
 }
 

@@ -43,7 +43,7 @@ public struct PersistentLogHandler {
     }
     
     public init(label: String, metadataProvider: Logger.MetadataProvider?) {
-        self.init(label: label, metadataProvider: nil, store: .shared)
+        self.init(label: label, metadataProvider: metadataProvider, store: .shared)
     }
     
     public init(label: String, metadataProvider: Logger.MetadataProvider?, store: LoggerStore) {

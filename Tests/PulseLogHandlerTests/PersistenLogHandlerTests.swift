@@ -67,12 +67,12 @@ final class PersistentLogHandlerTests: XCTestCase {
         let persistedMessage1 = try XCTUnwrap(persistedMessages.first { $0.label == "test.logger.1" })
         XCTAssertEqual(persistedMessage1.text, message1)
         XCTAssertEqual(persistedMessage1.createdAt, date)
-        XCTAssertEqual(persistedMessage1.sessionID, store.sessionID)
+        XCTAssertEqual(persistedMessage1.session, store.session.id)
 
         let persistedMessage2 = try XCTUnwrap(persistedMessages.first { $0.label == "test.logger.2" })
         XCTAssertEqual(persistedMessage2.text, message2)
         XCTAssertEqual(persistedMessage2.createdAt, date)
-        XCTAssertEqual(persistedMessage2.sessionID, store.sessionID)
+        XCTAssertEqual(persistedMessage2.session, store.session.id)
     }
 
     func testStoresFileInformation() throws {

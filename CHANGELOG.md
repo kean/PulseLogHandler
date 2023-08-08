@@ -4,7 +4,7 @@
 
 *Aug 8, 2023*
 
-- Add suppport for Pulse 4.x – https://github.com/kean/PulseLogHandler/pull/7 by @lukeredpath 
+- Add support for Pulse 4.x – https://github.com/kean/PulseLogHandler/pull/7 by @lukeredpath 
 
 # PulseLogHandler 3.x
 

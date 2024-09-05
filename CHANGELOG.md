@@ -1,3 +1,11 @@
+# PulseLogHandler 5.x
+
+## PulseLogHandler 5.0
+
+*Sep 4, 2024*
+
+- Add support for Pulse 5.x 
+
 # PulseLogHandler 4.x
 
 ## PulseLogHandler 4.0
